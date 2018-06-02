@@ -234,6 +234,23 @@ impl<'a, K, V> IntoIterator for &'a HashMap<K, V> {
     }
 }
 
+use std::iter::FromIterator;
+impl<K, V> FromIterator<(K, V)> for HashMap<K, V>
+where
+    K: Hash + Eq,
+{
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let mut map = HashMap::new();
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+        map
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
