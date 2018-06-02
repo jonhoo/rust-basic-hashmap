@@ -234,6 +234,40 @@ impl<'a, K, V> IntoIterator for &'a HashMap<K, V> {
     }
 }
 
+pub struct IntoIter<K, V> {
+    map: HashMap<K, V>,
+    bucket: usize,
+}
+
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (K, V);
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.map.buckets.get_mut(self.bucket) {
+                Some(bucket) => match bucket.pop() {
+                    Some(x) => break Some(x),
+                    None => {
+                        self.bucket += 1;
+                        continue;
+                    }
+                },
+                None => break None,
+            }
+        }
+    }
+}
+
+impl<K, V> IntoIterator for HashMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = IntoIter<K, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            map: self,
+            bucket: 0,
+        }
+    }
+}
+
 use std::iter::FromIterator;
 impl<K, V> FromIterator<(K, V)> for HashMap<K, V>
 where
@@ -287,5 +321,18 @@ mod tests {
             }
         }
         assert_eq!((&map).into_iter().count(), 4);
+
+        let mut items = 0;
+        for (k, v) in map {
+            match k {
+                "foo" => assert_eq!(v, 42),
+                "bar" => assert_eq!(v, 43),
+                "baz" => assert_eq!(v, 142),
+                "quox" => assert_eq!(v, 7),
+                _ => unreachable!(),
+            }
+            items += 1;
+        }
+        assert_eq!(items, 4);
     }
 }
