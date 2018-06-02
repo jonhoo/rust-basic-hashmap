@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 use std::borrow::Borrow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -27,13 +25,18 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
-    bucket: &'a mut Vec<(K, V)>,
+    map: &'a mut HashMap<K, V>,
+    bucket: usize,
 }
 
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
-    pub fn insert(self, value: V) -> &'a mut V {
-        self.bucket.push((self.key, value));
-        &mut self.bucket.last_mut().unwrap().1
+    pub fn insert(self, value: V) -> &'a mut V
+    where
+        K: Hash + Eq,
+    {
+        self.map.buckets[self.bucket].push((self.key, value));
+        self.map.items += 1;
+        &mut self.map.buckets[self.bucket].last_mut().unwrap().1
     }
 }
 
@@ -42,7 +45,10 @@ pub enum Entry<'a, K: 'a, V: 'a> {
     Vacant(VacantEntry<'a, K, V>),
 }
 
-impl<'a, K, V> Entry<'a, K, V> {
+impl<'a, K, V> Entry<'a, K, V>
+where
+    K: Hash + Eq,
+{
     pub fn or_insert(self, value: V) -> &'a mut V {
         match self {
             Entry::Occupied(e) => &mut e.entry.1,
@@ -82,18 +88,25 @@ where
         (hasher.finish() % self.buckets.len() as u64) as usize
     }
 
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+    pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V> {
+        if self.buckets.is_empty() || self.items > 3 * self.buckets.len() / 4 {
+            self.resize();
+        }
+
         let bucket = self.bucket(&key);
 
         for entry in &mut self.buckets[bucket] {
             if entry.0 == key {
-                return Entry::Occupied(OccupiedEntry { entry });
+                return Entry::Occupied(OccupiedEntry {
+                    entry: unsafe { &mut *(entry as *mut _) },
+                });
             }
         }
 
         Entry::Vacant(VacantEntry {
             key,
-            bucket: &mut self.buckets[bucket],
+            map: self,
+            bucket,
         })
     }
 
