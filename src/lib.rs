@@ -94,20 +94,12 @@ where
         }
 
         let bucket = self.bucket(&key);
-
-        for entry in &mut self.buckets[bucket] {
-            if entry.0 == key {
-                return Entry::Occupied(OccupiedEntry {
-                    entry: unsafe { &mut *(entry as *mut _) },
-                });
-            }
+        match self.buckets[bucket].iter().position(|&(ref ekey, _)| ekey == &key) {
+            Some(index) => Entry::Occupied(OccupiedEntry {
+                entry: &mut self.buckets[bucket][index]
+            }),
+            None => Entry::Vacant(VacantEntry { map: self, key, bucket })
         }
-
-        Entry::Vacant(VacantEntry {
-            key,
-            map: self,
-            bucket,
-        })
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
