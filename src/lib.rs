@@ -118,13 +118,13 @@ where
         let bucket = self.bucket(&key);
         let bucket = &mut self.buckets[bucket];
 
-        self.items += 1;
         for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
             if ekey == &key {
                 return Some(mem::replace(evalue, value));
             }
         }
-
+        
+        self.items += 1;
         bucket.push((key, value));
         None
     }
