@@ -123,7 +123,7 @@ where
                 return Some(mem::replace(evalue, value));
             }
         }
-        
+
         self.items += 1;
         bucket.push((key, value));
         None
