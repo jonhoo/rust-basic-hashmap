@@ -126,6 +126,9 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
+        if self.is_empty() {
+            return None;
+        }
         let bucket = self.bucket(key);
         self.buckets[bucket]
             .iter()
@@ -138,7 +141,11 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        self.get(key).is_some()
+        if self.is_empty() {
+            false
+        } else {
+            self.get(key).is_some()
+        }
     }
 
     pub fn remove<Q>(&mut self, key: &Q) -> Option<V>
@@ -146,6 +153,9 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
+        if self.is_empty() {
+            return None;
+        }
         let bucket = self.bucket(key);
         let bucket = &mut self.buckets[bucket];
         let i = bucket
@@ -326,5 +336,13 @@ mod tests {
             items += 1;
         }
         assert_eq!(items, 4);
+    }
+
+    #[test]
+    fn empty_hashmap() {
+        let mut map = HashMap::<&str, &str>::new();
+        assert_eq!(map.contains_key("key"), false);
+        assert_eq!(map.get("key"), None);
+        assert_eq!(map.remove("key"), None);
     }
 }
