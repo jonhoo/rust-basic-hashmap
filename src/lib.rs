@@ -83,7 +83,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        if self.buckets.len() == 0 {
+        if self.buckets.is_empty() {
             return None;
         }
         let mut hasher = DefaultHasher::new();
@@ -96,7 +96,7 @@ where
             self.resize();
         }
 
-        let bucket = self.bucket(&key).unwrap();
+        let bucket = self.bucket(&key).expect("buckets.is_empty() handled above");
         match self.buckets[bucket].iter().position(|&(ref ekey, _)| ekey == &key) {
             Some(index) => Entry::Occupied(OccupiedEntry {
                 entry: &mut self.buckets[bucket][index]
@@ -110,7 +110,7 @@ where
             self.resize();
         }
 
-        let bucket = self.bucket(&key).unwrap();
+        let bucket = self.bucket(&key).expect("buckets.is_empty() handled above");
         let bucket = &mut self.buckets[bucket];
 
         for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
