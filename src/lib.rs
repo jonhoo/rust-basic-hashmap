@@ -78,14 +78,17 @@ impl<K, V> HashMap<K, V>
 where
     K: Hash + Eq,
 {
-    fn bucket<Q>(&self, key: &Q) -> usize
+    fn bucket<Q>(&self, key: &Q) -> Option<usize>
     where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
+        if self.buckets.is_empty() {
+            return None;
+        }
         let mut hasher = DefaultHasher::new();
         key.hash(&mut hasher);
-        (hasher.finish() % self.buckets.len() as u64) as usize
+        Some((hasher.finish() % self.buckets.len() as u64) as usize)
     }
 
     pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V> {
@@ -93,7 +96,7 @@ where
             self.resize();
         }
 
-        let bucket = self.bucket(&key);
+        let bucket = self.bucket(&key).expect("buckets.is_empty() handled above");
         match self.buckets[bucket].iter().position(|&(ref ekey, _)| ekey == &key) {
             Some(index) => Entry::Occupied(OccupiedEntry {
                 entry: &mut self.buckets[bucket][index]
@@ -107,7 +110,7 @@ where
             self.resize();
         }
 
-        let bucket = self.bucket(&key);
+        let bucket = self.bucket(&key).expect("buckets.is_empty() handled above");
         let bucket = &mut self.buckets[bucket];
 
         for &mut (ref ekey, ref mut evalue) in bucket.iter_mut() {
@@ -126,7 +129,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        let bucket = self.bucket(key);
+        let bucket = self.bucket(key)?;
         self.buckets[bucket]
             .iter()
             .find(|&(ref ekey, _)| ekey.borrow() == key)
@@ -146,7 +149,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        let bucket = self.bucket(key);
+        let bucket = self.bucket(key)?;
         let bucket = &mut self.buckets[bucket];
         let i = bucket
             .iter()
@@ -326,5 +329,13 @@ mod tests {
             items += 1;
         }
         assert_eq!(items, 4);
+    }
+
+    #[test]
+    fn empty_hashmap() {
+        let mut map = HashMap::<&str, &str>::new();
+        assert_eq!(map.contains_key("key"), false);
+        assert_eq!(map.get("key"), None);
+        assert_eq!(map.remove("key"), None);
     }
 }
